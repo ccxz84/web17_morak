@@ -4,6 +4,7 @@ import { CreateUserDto } from './dto/user.dto';
 import { Member } from '@prisma/client';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { getSecret } from 'vault';
 
 @Injectable()
 export class AuthRepository {
@@ -29,7 +30,7 @@ export class AuthRepository {
   }
 
   async addRefreshToken(provider_id: string, refreshToken: string): Promise<void> {
-    const REDIS_MAX_AGE_REFRESH_TOKEN: number = Number(process.env.REDIS_MAX_AGE_REFRESH_TOKEN);
+    const REDIS_MAX_AGE_REFRESH_TOKEN: number = Number(getSecret('REDIS_MAX_AGE_REFRESH_TOKEN'));
     await this.cacheManager.set(provider_id, refreshToken, { ttl: REDIS_MAX_AGE_REFRESH_TOKEN } as any);
   }
 
