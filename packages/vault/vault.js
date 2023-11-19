@@ -27,7 +27,6 @@ async function loadSecrets() {
         cachedSecrets[key] = process.env[key]; // 중요하지 않은 환경 변수만 복사
       }
     }
-    // console.log(cachedSecrets);
   }
 }
 
