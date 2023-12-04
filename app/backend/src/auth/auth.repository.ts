@@ -4,7 +4,7 @@ import { CreateUserDto } from './dto/user.dto';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { Member } from '@prisma/client';
-import { getSecret } from 'vault';
+import { getSecret } from '@morak/vault';
 
 @Injectable()
 export class AuthRepository {

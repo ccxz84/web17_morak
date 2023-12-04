@@ -22,7 +22,7 @@ import {
 import { GoogleOauthGuard } from './guards/google-oauth.guard';
 import { Request, Response } from 'express';
 import { LogoutDto } from './dto/user.dto';
-import { getSecret } from 'vault';
+import { getSecret } from '@morak/vault';
 
 @ApiTags('Oauth API')
 @Controller('auth')

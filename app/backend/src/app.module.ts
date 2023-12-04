@@ -4,7 +4,7 @@ import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
 import { MemberModule } from './member/member.module';
 import * as redisStore from 'cache-manager-redis-store';
-import { getSecret } from 'vault';
+import { getSecret } from '@morak/vault';
 import { MogacoModule } from './mogaco/mogaco.module';
 import { GroupsModule } from './groups/groups.module';
 import { PrismaModule } from 'prisma/prisma.module';

@@ -3,7 +3,7 @@ import { AuthRepository } from './auth.repository';
 import { CreateUserDto } from './dto/user.dto';
 import { JwtService } from '@nestjs/jwt';
 import { Payload, Tokens } from './interface';
-import { getSecret } from 'vault';
+import { getSecret } from '@morak/vault';
 
 @Injectable()
 export class AuthService {
