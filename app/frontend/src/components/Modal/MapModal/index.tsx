@@ -1,143 +1,75 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
-import { RequestCreateMogacoDto } from '@morak/apitype';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
-import { Button, Input } from '@/components';
-import { useDebounce } from '@/hooks';
+import { MAX_ZOOM_LEVEL } from '@/constants';
+import { useMap } from '@/hooks';
 import { queryKeys } from '@/queries';
-import { useModalAtom } from '@/stores';
-import { sansBold14, sansRegular12, sansRegular14 } from '@/styles/font.css';
 
 import * as styles from './index.css';
-import { useMap } from './useMap';
+import { Marker } from './Marker';
 
-type MapModalProps = {
-  saveAddress: ({
-    address,
-    latitude,
-    longitude,
-  }: Pick<
-    RequestCreateMogacoDto,
-    'address' | 'latitude' | 'longitude'
-  >) => void;
+const { Tmapv2 } = window;
+
+type MapProps = {
+  onClickMarker: (id: string) => void;
+};
+type Geolocation = {
+  coords: {
+    latitude: number;
+    longitude: number;
+  };
+};
+type UpdateMarker = (
+  coord: {
+    latitude: number | null;
+    longitude: number | null;
+  },
+  theme: 'green' | 'red',
+) => void;
+
+const setMyLocation = (updateMarker: UpdateMarker) => {
+  const onSuccess = (position: Geolocation) => {
+    const { latitude, longitude } = position.coords;
+    updateMarker({ latitude, longitude }, 'red');
+  };
+  navigator.geolocation.getCurrentPosition(onSuccess);
 };
 
-export function MapModal({ saveAddress }: MapModalProps) {
-  const [open, setOpen] = useModalAtom();
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const debouncedSearchKeyword = useDebounce(searchKeyword);
+export function Map({ onClickMarker }: MapProps) {
+  const { data: mogacoList } = useQuery(queryKeys.mogaco.list());
   const mapRef = useRef<HTMLDivElement>(null);
+  const { mapInstance, updateMarker, currentMarker } = useMap(mapRef);
+  setMyLocation(updateMarker);
 
-  const { coord, setCoord, currentAddress: selectedAddress } = useMap(mapRef);
+  useEffect(() => {
+    if (!mapInstance) {
+      return;
+    }
+    currentMarker?.setLabel(`<span class=${styles.label}>현 위치</span>`);
 
-  const { data: tmapResponse } = useQuery({
-    ...queryKeys.tmap.searchAddress({
-      searchKeyword: debouncedSearchKeyword,
-    }),
-    enabled: !!debouncedSearchKeyword,
-    placeholderData: keepPreviousData,
-  });
+    mogacoList?.forEach((mogaco) => {
+      const { id, latitude, longitude } = mogaco;
+      if (latitude && longitude) {
+        const position = new Tmapv2.LatLng(latitude, longitude);
+        const marker = Marker({
+          mapContent: mapInstance,
+          position,
+          theme: 'green',
+        });
+        marker.addListener('click', () => {
+          onClickMarker(id);
+          mapInstance.setCenter(position);
+          mapInstance.setZoom(MAX_ZOOM_LEVEL);
+        });
+      }
+    });
 
-  const addressData = tmapResponse?.searchPoiInfo?.pois?.poi;
-
-  const resetSearchKeyword = () => {
-    setSearchKeyword('');
-  };
-
-  const closeModal = () => {
-    resetSearchKeyword();
-    setOpen(false);
-  };
-
-  const onClickConfirm = () => {
-    const { latitude, longitude } = coord;
-    if (!(latitude && longitude)) return;
-    saveAddress({ address: selectedAddress, latitude, longitude });
-    closeModal();
-  };
-
-  const onClickAddressListItem = <
-    Event extends React.MouseEvent | React.KeyboardEvent,
-  >(
-    e: Event,
-  ) => {
-    const coordinate = {
-      latitude: Number(e.currentTarget.getAttribute('data-lat')),
-      longitude: Number(e.currentTarget.getAttribute('data-lon')),
+    return () => {
+      mapInstance.destroy();
     };
-    setCoord(coordinate);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mogacoList]);
 
-  return (
-    <dialog className={styles.container} open={open}>
-      <form method="dialog" className={styles.form}>
-        <div className={styles.currentAddress}>
-          <span className={sansRegular14}>선택한 주소: </span>
-          <span className={sansBold14}>{selectedAddress}</span>
-        </div>
-        <div className={styles.addressWrapper}>
-          <div className={styles.inputWrapper}>
-            <Input
-              label="장소 검색"
-              list="address-input"
-              value={searchKeyword}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setSearchKeyword(e.currentTarget.value)
-              }
-            />
-            {addressData && (
-              <ul id="address-input" className={styles.list}>
-                {addressData.map((address) => {
-                  const fullAddress =
-                    address.newAddressList.newAddress[0].fullAddressRoad;
-                  const addressName = address.name;
-                  const { noorLat: lat, noorLon: lon } = address;
-                  return (
-                    <li
-                      role="option"
-                      aria-selected={false}
-                      className={styles.listItem}
-                      key={address.pkey}
-                      value={`${fullAddress} ${addressName}`}
-                      data-lat={lat}
-                      data-lon={lon}
-                      onClick={onClickAddressListItem}
-                      onKeyDown={onClickAddressListItem}
-                    >
-                      <span className={sansBold14}>{addressName}</span>
-                      <span className={sansRegular12}>{fullAddress}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-          <div id="map" className={styles.map} ref={mapRef} />
-        </div>
-        <div className={styles.buttonWrapper}>
-          <Button
-            type="button"
-            theme="primary"
-            size="medium"
-            shape="line"
-            onClick={closeModal}
-            fullWidth
-          >
-            취소
-          </Button>
-          <Button
-            type="button"
-            theme="primary"
-            size="medium"
-            shape="fill"
-            fullWidth
-            onClick={onClickConfirm}
-          >
-            확인
-          </Button>
-        </div>
-      </form>
-    </dialog>
-  );
+  return <div className={styles.container} id="map" ref={mapRef} />;
 }
